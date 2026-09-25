@@ -15,7 +15,10 @@ export async function GET(request: NextRequest) {
     .update(codeVerifier)
     .digest('base64url')
 
-  const state = randomBytes(16).toString('hex')
+  const nonce = randomBytes(16).toString('hex')
+
+  // Encode both nonce and codeVerifier in state — avoids cookie issues on Vercel edge
+  const state = Buffer.from(`${nonce}|${codeVerifier}`).toString('base64url')
 
   const authUrl = new URL('https://twitter.com/i/oauth2/authorize')
   authUrl.searchParams.set('response_type', 'code')
@@ -26,18 +29,5 @@ export async function GET(request: NextRequest) {
   authUrl.searchParams.set('code_challenge', codeChallenge)
   authUrl.searchParams.set('code_challenge_method', 'S256')
 
-  const response = NextResponse.redirect(authUrl.toString())
-
-  const cookieOpts = {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === 'production',
-    sameSite: 'lax' as const,
-    maxAge: 600,
-    path: '/',
-  }
-
-  response.cookies.set('x_oauth_state', state, cookieOpts)
-  response.cookies.set('x_code_verifier', codeVerifier, cookieOpts)
-
-  return response
+  return NextResponse.redirect(authUrl.toString())
 }
