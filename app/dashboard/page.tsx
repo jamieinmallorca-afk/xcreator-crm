@@ -141,7 +141,7 @@ export default async function DashboardPage({
         )}
 
         {/* Pricing cards (for free users) */}
-        {!isPro && <PricingCards />}
+        {!isPro && <PricingCards currentTier="free" />}
 
         {/* Connect button */}
         <div className="flex justify-center">
