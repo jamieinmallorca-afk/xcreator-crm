@@ -45,7 +45,8 @@ export async function POST(request: NextRequest) {
 
   for (const template of (templates ?? [])) {
     const profileId = template.profile_id
-    const accessToken = (template.profiles as { x_access_token: string }).x_access_token
+    const profileData = (template.profiles as unknown as { x_access_token: string })
+    const accessToken = profileData.x_access_token
 
     if (!accessToken) {
       results.push({ profileId, sent: 0, skipped: 0, errors: 1 })
