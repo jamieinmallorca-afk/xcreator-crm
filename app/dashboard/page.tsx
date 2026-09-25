@@ -145,7 +145,7 @@ export default async function DashboardPage({
 
         {/* Connect button */}
         <div className="flex justify-center">
-          <ConnectButton username={profile?.x_username ?? ''} />
+          <ConnectButton />
         </div>
       </div>
     </div>
