@@ -1,33 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
-import { randomBytes, createHash } from 'crypto'
+import { NextResponse } from 'next/server'
+import crypto from 'crypto'
 
-export async function GET(request: NextRequest) {
-  const clientId = process.env.X_CLIENT_ID!
-  const redirectUri = process.env.NEXT_PUBLIC_X_REDIRECT_URI!
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL!
+function base64url(input: Buffer | string): string {
+  const buf = typeof input === 'string' ? Buffer.from(input) : input
+  return buf.toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=/g, '')
+}
 
-  if (!clientId) {
-    return NextResponse.redirect(`${appUrl}/dashboard?error=missing_client_id`)
-  }
+export async function GET() {
+  const codeVerifier = base64url(crypto.randomBytes(32))
+  const codeChallenge = base64url(
+    crypto.createHash('sha256').update(codeVerifier).digest()
+  )
 
-  const codeVerifier = randomBytes(32).toString('base64url')
-  const codeChallenge = createHash('sha256')
-    .update(codeVerifier)
-    .digest('base64url')
+  // Encode verifier in state (stateless PKCE — no server-side session needed)
+  const state = Buffer.from(JSON.stringify({ codeVerifier })).toString('base64')
 
-  const nonce = randomBytes(16).toString('hex')
+  const params = new URLSearchParams({
+    response_type: 'code',
+    client_id: process.env.X_CLIENT_ID!,
+    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback/x`,
+    scope: [
+      'tweet.read',
+      'users.read',
+      'follows.read',
+      'follows.write',
+      'offline.access',
+      'dm.read',    // needed for win-back DM feature
+      'dm.write',   // needed to send win-back DMs
+    ].join(' '),
+    state,
+    code_challenge: codeChallenge,
+    code_challenge_method: 'S256',
+  })
 
-  // Encode both nonce and codeVerifier in state — avoids cookie issues on Vercel edge
-  const state = Buffer.from(`${nonce}|${codeVerifier}`).toString('base64url')
-
-  const authUrl = new URL('https://twitter.com/i/oauth2/authorize')
-  authUrl.searchParams.set('response_type', 'code')
-  authUrl.searchParams.set('client_id', clientId)
-  authUrl.searchParams.set('redirect_uri', redirectUri)
-  authUrl.searchParams.set('scope', 'tweet.read users.read follows.read offline.access')
-  authUrl.searchParams.set('state', state)
-  authUrl.searchParams.set('code_challenge', codeChallenge)
-  authUrl.searchParams.set('code_challenge_method', 'S256')
-
-  return NextResponse.redirect(authUrl.toString())
+  return NextResponse.redirect(
+    `https://twitter.com/i/oauth2/authorize?${params.toString()}`
+  )
 }

@@ -1,99 +1,103 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
-import { getXUser } from '@/lib/x-api'
-import { createSessionCookie } from '@/lib/session'
+import { setSession } from '@/lib/session'
 
 export async function GET(request: NextRequest) {
-  const { searchParams } = request.nextUrl
+  const { searchParams } = new URL(request.url)
   const code = searchParams.get('code')
-  const state = searchParams.get('state')
+  const stateParam = searchParams.get('state')
   const error = searchParams.get('error')
   const appUrl = process.env.NEXT_PUBLIC_APP_URL!
 
-  if (error || !code || !state) {
-    return NextResponse.redirect(`${appUrl}/dashboard?error=oauth_denied`)
+  if (error || !code || !stateParam) {
+    return NextResponse.redirect(new URL('/?error=oauth_failed', appUrl))
   }
 
-  // Decode state to get codeVerifier (no cookies needed)
+  // Decode state to get codeVerifier (stateless PKCE)
   let codeVerifier: string
   try {
-    const decoded = Buffer.from(state, 'base64url').toString('utf-8')
-    const parts = decoded.split('|')
-    if (parts.length !== 2) throw new Error('Invalid state')
-    codeVerifier = parts[1]
+    const decoded = JSON.parse(Buffer.from(stateParam, 'base64').toString())
+    codeVerifier = decoded.codeVerifier
   } catch {
-    return NextResponse.redirect(`${appUrl}/dashboard?error=invalid_state`)
+    return NextResponse.redirect(new URL('/?error=invalid_state', appUrl))
   }
 
-  try {
-    const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Authorization: `Basic ${Buffer.from(
-          `${process.env.X_CLIENT_ID}:${process.env.X_CLIENT_SECRET}`
-        ).toString('base64')}`,
+  // Exchange code for tokens
+  const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: `${appUrl}/api/auth/callback/x`,
+      client_id: process.env.X_CLIENT_ID!,
+      code_verifier: codeVerifier,
+    }),
+  })
+
+  if (!tokenRes.ok) {
+    console.error('Token exchange failed:', await tokenRes.text())
+    return NextResponse.redirect(new URL('/?error=token_exchange_failed', appUrl))
+  }
+
+  const tokens = await tokenRes.json() as {
+    access_token: string
+    refresh_token?: string
+    expires_in?: number
+    token_type: string
+  }
+
+  // Fetch X user info
+  const userRes = await fetch('https://api.twitter.com/2/users/me?user.fields=name,profile_image_url', {
+    headers: { Authorization: `Bearer ${tokens.access_token}` },
+  })
+
+  if (!userRes.ok) {
+    return NextResponse.redirect(new URL('/?error=user_fetch_failed', appUrl))
+  }
+
+  const { data: xUser } = await userRes.json() as {
+    data: { id: string; username: string; name: string; profile_image_url?: string }
+  }
+
+  const db = createAdminClient()
+
+  // Upsert profile
+  const expiresAt = tokens.expires_in
+    ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
+    : null
+
+  const { data: profile, error: upsertError } = await db
+    .from('profiles')
+    .upsert(
+      {
+        x_username: xUser.username,
+        x_user_id: xUser.id,
+        x_access_token: tokens.access_token,
+        x_refresh_token: tokens.refresh_token ?? null,
+        x_token_expires_at: expiresAt,
+        updated_at: new Date().toISOString(),
       },
-      body: new URLSearchParams({
-        grant_type: 'authorization_code',
-        code,
-        redirect_uri: process.env.NEXT_PUBLIC_X_REDIRECT_URI!,
-        code_verifier: codeVerifier,
-      }),
-    })
+      { onConflict: 'x_username', ignoreDuplicates: false }
+    )
+    .select('id, onboarding_completed')
+    .single()
 
-    if (!tokenRes.ok) {
-      const body = await tokenRes.text()
-      console.error('Token exchange failed:', body)
-      return NextResponse.redirect(`${appUrl}/dashboard?error=token_exchange_failed`)
-    }
-
-    const tokens = await tokenRes.json()
-    const xUser = await getXUser(tokens.access_token)
-
-    const db = createAdminClient()
-    const { data: profile, error: dbError } = await db
-      .from('profiles')
-      .upsert(
-        {
-          x_user_id: xUser.id,
-          x_username: xUser.username,
-          x_display_name: xUser.name,
-          x_access_token: tokens.access_token,
-          x_refresh_token: tokens.refresh_token ?? null,
-          x_token_expires_at: tokens.expires_in
-            ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
-            : null,
-          updated_at: new Date().toISOString(),
-        },
-        { onConflict: 'x_user_id', ignoreDuplicates: false }
-      )
-      .select('id')
-      .single()
-
-    if (dbError) {
-      console.error('DB upsert error:', dbError)
-      return NextResponse.redirect(`${appUrl}/dashboard?error=db_error`)
-    }
-
-    const sessionValue = createSessionCookie({
-      userId: profile.id,
-      xUserId: xUser.id,
-      xUsername: xUser.username,
-    })
-
-    const response = NextResponse.redirect(`${appUrl}/dashboard?connected=true`)
-    response.cookies.set('xcreator_session', sessionValue, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: 60 * 60 * 24 * 30,
-    })
-
-    return response
-  } catch (err) {
-    console.error('OAuth callback error:', err)
-    return NextResponse.redirect(`${appUrl}/dashboard?error=server_error`)
+  if (upsertError || !profile) {
+    console.error('Profile upsert error:', upsertError)
+    return NextResponse.redirect(new URL('/?error=profile_error', appUrl))
   }
+
+  // Set session cookie
+  const response = NextResponse.redirect(
+    new URL(profile.onboarding_completed ? '/dashboard' : '/onboarding', appUrl)
+  )
+
+  setSession(response, {
+    userId: profile.id,
+    xUsername: xUser.username,
+    xUserId: xUser.id,
+  })
+
+  return response
 }
