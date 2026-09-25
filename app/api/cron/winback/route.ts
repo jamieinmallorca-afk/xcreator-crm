@@ -1,14 +1,6 @@
 /**
  * POST /api/cron/winback
- *
- * Called by Vercel Cron (see vercel.json) once per day.
- * 1. Find all profiles with active DM templates
- * 2. For each profile, find subscribers whose health score < trigger_score
- *    and who haven't received a win-back DM in the last 30 days
- * 3. Send a DM via X API v2, log the result
- *
- * Requires the stored x_access_token to have dm.write scope.
- * Users grant this during the OAuth flow (dm.write must be in X_OAUTH_SCOPES).
+ * Called by Vercel Cron daily. Sends win-back DMs to at-risk subscribers.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -17,7 +9,6 @@ import { createAdminClient } from '@/lib/supabase'
 const CRON_SECRET = process.env.CRON_SECRET
 
 export async function POST(request: NextRequest) {
-  // Verify this is called by Vercel Cron (or our own internal calls)
   const auth = request.headers.get('authorization')
   if (CRON_SECRET && auth !== `Bearer ${CRON_SECRET}`) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -25,15 +16,10 @@ export async function POST(request: NextRequest) {
 
   const db = createAdminClient()
 
-  // Fetch all active templates grouped by profile
+  // Fetch all active templates (no join — separate profile lookup below)
   const { data: templates, error: tErr } = await db
     .from('dm_templates')
-    .select(`
-      id, profile_id, name, message, trigger_score,
-      profiles!inner (
-        x_access_token, x_username
-      )
-    `)
+    .select('id, profile_id, message, trigger_score')
     .eq('is_active', true)
 
   if (tErr) {
@@ -41,19 +27,34 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: tErr.message }, { status: 500 })
   }
 
+  // Group templates by profile_id to avoid re-fetching the same access token
+  const byProfile = new Map<string, Array<{ id: string; message: string; trigger_score: number }>>()
+  for (const t of templates ?? []) {
+    if (!byProfile.has(t.profile_id)) byProfile.set(t.profile_id, [])
+    byProfile.get(t.profile_id)!.push({ id: t.id, message: t.message, trigger_score: t.trigger_score })
+  }
+
   const results: Array<{ profileId: string; sent: number; skipped: number; errors: number }> = []
 
-  for (const template of (templates ?? [])) {
-    const profileId = template.profile_id
-    const profileData = (template.profiles as unknown as { x_access_token: string })
-    const accessToken = profileData.x_access_token
+  for (const [profileId, profileTemplates] of byProfile.entries()) {
+    // Fetch access token for this profile separately — avoids join type issues
+    const { data: profile } = await db
+      .from('profiles')
+      .select('x_access_token')
+      .eq('id', profileId)
+      .single()
+
+    const accessToken: string | null = profile?.x_access_token ?? null
 
     if (!accessToken) {
       results.push({ profileId, sent: 0, skipped: 0, errors: 1 })
       continue
     }
 
-    // Find at-risk subscribers for this profile not DMed in 30 days
+    // Use the lowest trigger_score template active for this profile
+    const template = profileTemplates.sort((a, b) => a.trigger_score - b.trigger_score)[0]
+
+    // Find at-risk subscribers
     const { data: atRisk, error: subErr } = await db
       .from('subscribers')
       .select('x_user_id, x_username, health_score')
@@ -66,7 +67,7 @@ export async function POST(request: NextRequest) {
       continue
     }
 
-    // Filter out those already DMed in the last 30 days
+    // Filter out those already DMed in last 30 days
     const { data: recentLogs } = await db
       .from('dm_log')
       .select('subscriber_x_user_id')
@@ -74,21 +75,24 @@ export async function POST(request: NextRequest) {
       .eq('status', 'sent')
       .gte('sent_at', new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString())
 
-    const recentSet = new Set((recentLogs ?? []).map(l => l.subscriber_x_user_id))
-    const eligible = atRisk.filter(s => !recentSet.has(s.x_user_id))
+    const recentSet = new Set((recentLogs ?? []).map((l: { subscriber_x_user_id: string }) => l.subscriber_x_user_id))
+    const eligible = atRisk.filter((s: { x_user_id: string }) => !recentSet.has(s.x_user_id))
 
-    let sent = 0, skipped = atRisk.length - eligible.length, errors = 0
+    let sent = 0
+    let skipped = atRisk.length - eligible.length
+    let errors = 0
 
     for (const sub of eligible) {
-      const renderedMessage = template.message.replace(/\{\{username\}\}/g, sub.x_username ?? 'there')
+      const subUsername: string = (sub as { x_username?: string }).x_username ?? 'there'
+      const subUserId: string = (sub as { x_user_id: string }).x_user_id
+      const renderedMessage = template.message.replace(/\{\{username\}\}/g, subUsername)
 
-      // Insert log entry as pending first
       const { data: logEntry } = await db
         .from('dm_log')
         .insert({
           profile_id: profileId,
-          subscriber_x_user_id: sub.x_user_id,
-          subscriber_username: sub.x_username,
+          subscriber_x_user_id: subUserId,
+          subscriber_username: subUsername,
           template_id: template.id,
           message: renderedMessage,
           status: 'pending',
@@ -96,9 +100,8 @@ export async function POST(request: NextRequest) {
         .select('id')
         .single()
 
-      // Send via X API v2
       const dmRes = await fetch(
-        `https://api.twitter.com/2/dm_conversations/with/${sub.x_user_id}/messages`,
+        `https://api.twitter.com/2/dm_conversations/with/${subUserId}/messages`,
         {
           method: 'POST',
           headers: {
@@ -111,31 +114,27 @@ export async function POST(request: NextRequest) {
 
       if (dmRes.ok) {
         const dmData = await dmRes.json() as { data?: { dm_event_id?: string } }
-        await db.from('dm_log').update({
-          status: 'sent',
-          x_dm_event_id: dmData?.data?.dm_event_id,
-          sent_at: new Date().toISOString(),
-        }).eq('id', logEntry!.id)
+        if (logEntry) {
+          await db.from('dm_log').update({
+            status: 'sent',
+            x_dm_event_id: dmData?.data?.dm_event_id ?? null,
+            sent_at: new Date().toISOString(),
+          }).eq('id', logEntry.id)
+        }
         sent++
       } else {
         const dmErr = await dmRes.text()
         const isRateLimit = dmRes.status === 429
-
-        await db.from('dm_log').update({
-          status: isRateLimit ? 'rate_limited' : 'failed',
-          error: dmErr,
-        }).eq('id', logEntry!.id)
-
-        errors++
-
-        // Back off on rate limit — stop sending for this profile
-        if (isRateLimit) {
-          console.warn(`[winback] Rate limited for profile ${profileId}`)
-          break
+        if (logEntry) {
+          await db.from('dm_log').update({
+            status: isRateLimit ? 'rate_limited' : 'failed',
+            error: dmErr,
+          }).eq('id', logEntry.id)
         }
+        errors++
+        if (isRateLimit) break
       }
 
-      // Polite delay between DMs (0.5s) to avoid bursting
       await new Promise(r => setTimeout(r, 500))
     }
 
@@ -143,6 +142,5 @@ export async function POST(request: NextRequest) {
   }
 
   const totalSent = results.reduce((a, r) => a + r.sent, 0)
-  console.log(`[winback] Done. Total sent: ${totalSent}`)
   return NextResponse.json({ ok: true, results, totalSent })
 }
