@@ -1,22 +1,33 @@
+import { NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 
-export interface SessionUser {
+export interface Session {
   userId: string
-  xUserId: string
   xUsername: string
+  xUserId?: string
 }
 
-export function getSession(): SessionUser | null {
-  const cookieStore = cookies()
-  const raw = cookieStore.get('xcreator_session')?.value
-  if (!raw) return null
+const COOKIE_NAME = 'xcreator_session'
+const COOKIE_MAX_AGE = 60 * 60 * 24 * 30 // 30 days
+
+export function setSession(response: NextResponse, session: Session) {
+  const value = Buffer.from(JSON.stringify(session)).toString('base64')
+  response.cookies.set(COOKIE_NAME, value, {
+    httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge: COOKIE_MAX_AGE,
+    path: '/',
+  })
+}
+
+export function getSession(): Session | null {
   try {
-    return JSON.parse(Buffer.from(raw, 'base64').toString('utf-8')) as SessionUser
+    const cookieStore = cookies()
+    const cookie = cookieStore.get(COOKIE_NAME)
+    if (!cookie?.value) return null
+    return JSON.parse(Buffer.from(cookie.value, 'base64').toString()) as Session
   } catch {
     return null
   }
-}
-
-export function createSessionCookie(user: SessionUser): string {
-  return Buffer.from(JSON.stringify(user)).toString('base64')
 }
