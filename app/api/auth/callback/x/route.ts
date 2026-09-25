@@ -14,11 +14,15 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(`${appUrl}/dashboard?error=oauth_denied`)
   }
 
-  const storedState = request.cookies.get('x_oauth_state')?.value
-  const codeVerifier = request.cookies.get('x_code_verifier')?.value
-
-  if (state !== storedState || !codeVerifier) {
-    return NextResponse.redirect(`${appUrl}/dashboard?error=state_mismatch`)
+  // Decode state to get codeVerifier (no cookies needed)
+  let codeVerifier: string
+  try {
+    const decoded = Buffer.from(state, 'base64url').toString('utf-8')
+    const parts = decoded.split('|')
+    if (parts.length !== 2) throw new Error('Invalid state')
+    codeVerifier = parts[1]
+  } catch {
+    return NextResponse.redirect(`${appUrl}/dashboard?error=invalid_state`)
   }
 
   try {
@@ -86,8 +90,6 @@ export async function GET(request: NextRequest) {
       path: '/',
       maxAge: 60 * 60 * 24 * 30,
     })
-    response.cookies.delete('x_oauth_state')
-    response.cookies.delete('x_code_verifier')
 
     return response
   } catch (err) {
