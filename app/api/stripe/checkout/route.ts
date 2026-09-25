@@ -25,7 +25,6 @@ export async function POST(request: NextRequest) {
 
   let customerId = profile?.stripe_customer_id
 
-  // Create Stripe customer if not exists
   if (!customerId) {
     const customer = await stripe.customers.create({
       metadata: {
@@ -41,7 +40,6 @@ export async function POST(request: NextRequest) {
 
   const checkoutSession = await stripe.checkout.sessions.create({
     customer: customerId,
-    payment_method_types: ['card'],
     line_items: [{ price: planConfig.priceId, quantity: 1 }],
     mode: 'subscription',
     success_url: `${appUrl}/dashboard?upgraded=true`,
