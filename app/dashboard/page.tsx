@@ -1,7 +1,6 @@
 import { redirect } from 'next/navigation'
 import { getSession } from '@/lib/session'
 import { createAdminClient } from '@/lib/supabase'
-import AlertBanner from './AlertBanner'
 import ConnectButton from './ConnectButton'
 import PricingCards from './PricingCards'
 import WinbackSection from './WinbackSection'
@@ -72,7 +71,11 @@ export default async function DashboardPage({
         )}
 
         {/* Alerts */}
-        <AlertBanner atRiskCount={atRiskCount} />
+        {atRiskCount > 0 && (
+          <div className="bg-amber-900/30 border border-amber-500/30 rounded-xl px-5 py-3 text-amber-300 text-sm">
+            ⚠️ {atRiskCount} subscriber{atRiskCount === 1 ? '' : 's'} at risk of churning. Consider sending a win-back DM.
+          </div>
+        )}
 
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
