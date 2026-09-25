@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { PLANS } from '@/lib/stripe'
+import { PLANS } from '@/lib/plans'
 
 export default function PricingCards({ currentTier }: { currentTier: string }) {
   const [loading, setLoading] = useState<string | null>(null)
