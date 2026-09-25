@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createAdminClient } from '@/lib/supabase'
 import { getFollowers, calculateHealthScore, refreshXToken } from '@/lib/x-api'
 
-// Vercel cron hits this endpoint daily — protect it with a shared secret
 export async function GET(request: NextRequest) {
   const authHeader = request.headers.get('authorization')
   if (authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
@@ -11,7 +10,6 @@ export async function GET(request: NextRequest) {
 
   const db = createAdminClient()
 
-  // Fetch all profiles with valid tokens
   const { data: profiles, error } = await db
     .from('profiles')
     .select('id, x_user_id, x_access_token, x_refresh_token, x_token_expires_at, subscriber_limit')
@@ -27,7 +25,6 @@ export async function GET(request: NextRequest) {
     let accessToken = profile.x_access_token
 
     try {
-      // Refresh token if expired (with 5 min buffer)
       if (
         profile.x_token_expires_at &&
         new Date(profile.x_token_expires_at).getTime() < Date.now() + 5 * 60 * 1000 &&
@@ -42,17 +39,14 @@ export async function GET(request: NextRequest) {
         }).eq('id', profile.id)
       }
 
-      // Fetch followers from X API
       const followers = await getFollowers(
         profile.x_user_id,
         accessToken,
         profile.subscriber_limit
       )
 
-      // Upsert each follower
       for (const follower of followers) {
-        const healthScore = calculateHealthScore(new Date()) // week 1: simple score
-
+        const healthScore = calculateHealthScore(new Date())
         const { error: upsertError } = await db.from('subscribers').upsert(
           {
             profile_id: profile.id,
@@ -66,11 +60,9 @@ export async function GET(request: NextRequest) {
           },
           { onConflict: 'profile_id,x_user_id', ignoreDuplicates: false }
         )
-
         if (upsertError) errors.push(upsertError.message)
       }
 
-      // Mark unfollowers as inactive
       const followerIds = followers.map((f) => f.id)
       if (followerIds.length > 0) {
         await db
