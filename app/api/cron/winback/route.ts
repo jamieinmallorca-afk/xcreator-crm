@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
 
   const results: Array<{ profileId: string; sent: number; skipped: number; errors: number }> = []
 
-  for (const [profileId, profileTemplates] of byProfile.entries()) {
+  for (const [profileId, profileTemplates] of Array.from(byProfile.entries())) {
     // Fetch access token for this profile separately — avoids join type issues
     const { data: profile } = await db
       .from('profiles')
