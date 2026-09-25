@@ -2,7 +2,6 @@ import { NextRequest, NextResponse } from 'next/server'
 import { stripe } from '@/lib/stripe'
 import { createAdminClient } from '@/lib/supabase'
 
-export const config = { api: { bodyParser: false } }
 
 const SUBSCRIBER_LIMITS: Record<string, number> = {
   pro: 1000,
