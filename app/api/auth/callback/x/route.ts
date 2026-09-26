@@ -13,7 +13,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?error=oauth_failed', appUrl))
   }
 
-  // Decode state to get codeVerifier (stateless PKCE)
   let codeVerifier: string
   try {
     const decoded = JSON.parse(Buffer.from(stateParam, 'base64').toString())
@@ -22,10 +21,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?error=invalid_state', appUrl))
   }
 
-  // Exchange code for tokens
   const tokenRes = await fetch('https://api.twitter.com/2/oauth2/token', {
     method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+      Authorization: `Basic ${Buffer.from(`${process.env.X_CLIENT_ID!}:${process.env.X_CLIENT_SECRET!}`).toString('base64')}`,
+    },
     body: new URLSearchParams({
       grant_type: 'authorization_code',
       code,
@@ -47,7 +48,6 @@ export async function GET(request: NextRequest) {
     token_type: string
   }
 
-  // Fetch X user info
   const userRes = await fetch('https://api.twitter.com/2/users/me?user.fields=name,profile_image_url', {
     headers: { Authorization: `Bearer ${tokens.access_token}` },
   })
@@ -62,7 +62,6 @@ export async function GET(request: NextRequest) {
 
   const db = createAdminClient()
 
-  // Upsert profile
   const expiresAt = tokens.expires_in
     ? new Date(Date.now() + tokens.expires_in * 1000).toISOString()
     : null
@@ -88,7 +87,6 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?error=profile_error', appUrl))
   }
 
-  // Set session cookie
   const response = NextResponse.redirect(
     new URL(profile.onboarding_completed ? '/dashboard' : '/onboarding', appUrl)
   )
