@@ -87,9 +87,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL('/?error=profile_error', appUrl))
   }
 
-  const response = NextResponse.redirect(
-    new URL(profile.onboarding_completed ? '/dashboard' : '/onboarding', appUrl)
-  )
+  const response = NextResponse.redirect(new URL('/dashboard', appUrl))
 
   setSession(response, {
     userId: profile.id,
