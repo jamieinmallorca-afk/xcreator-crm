@@ -41,7 +41,6 @@ export default async function DashboardPage({
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-950 text-white">
-      {/* Nav */}
       <nav className="border-b border-slate-800 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <span className="text-xl font-bold text-indigo-400">XCreator</span>
