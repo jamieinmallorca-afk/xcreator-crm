@@ -189,10 +189,11 @@ export default function Home() {
         </div>
       </section>
 
-      {/* Footer */}
       <footer className="border-t border-white/10 py-8 text-center text-sm text-white/30">
-        <p>© 2026 XCreator CRM · Built for the creator economy</p>
-      </footer>
-    </main>
-  )
-}
+  <p className="mb-3">© 2026 XCreator CRM · Built for the creator economy</p>
+  <div className="flex justify-center gap-6">
+    <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
+    <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacy</Link>
+    <Link href="/refund" className="hover:text-white/60 transition-colors">Refund Policy</Link>
+  </div>
+</footer>
