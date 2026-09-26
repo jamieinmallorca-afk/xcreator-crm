@@ -4,7 +4,7 @@ const features = [
   {
     icon: '📊',
     title: 'Subscriber Health Scores',
-    desc: "Every paid subscriber gets a daily 0–100 score based on engagement, recency, and tier. See who's about to cancel before they do.",
+    desc: "Every paid subscriber gets a daily 0–100 score based on the engagement signals X makes available — recency, activity, and tier. See who's about to cancel before they do.",
   },
   {
     icon: '🔴',
@@ -110,7 +110,7 @@ export default function Home() {
       <section className="border-y border-white/10 bg-white/[0.02] py-8">
         <div className="max-w-4xl mx-auto px-6 grid grid-cols-3 gap-8 text-center">
           {[
-            { value: '23%', label: 'avg churn reduction' },
+            { value: '3x', label: 'more subscribers recovered when you act within 48 hrs' },
             { value: '< 2 min', label: 'to connect & see your data' },
             { value: '$0', label: 'to start' },
           ].map((s) => (
