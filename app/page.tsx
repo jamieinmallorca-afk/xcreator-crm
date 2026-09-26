@@ -4,7 +4,7 @@ const features = [
   {
     icon: '📊',
     title: 'Subscriber Health Scores',
-    desc: 'Every paid subscriber gets a daily 0–100 score based on engagement, recency, and tier. See who\'s about to cancel before they do.',
+    desc: "Every paid subscriber gets a daily 0–100 score based on engagement, recency, and tier. See who's about to cancel before they do.",
   },
   {
     icon: '🔴',
@@ -19,7 +19,7 @@ const features = [
   {
     icon: '💰',
     title: 'Revenue Dashboard',
-    desc: 'MRR, churn rate, new vs lost subscribers this month, and LTV by cohort — all in one view X\'s native analytics don\'t give you.',
+    desc: "MRR, churn rate, new vs lost subscribers this month, and LTV by cohort — all in one view X's native analytics don't give you.",
   },
   {
     icon: '📈',
@@ -29,7 +29,7 @@ const features = [
   {
     icon: '🎯',
     title: 'Cohort Analysis',
-    desc: 'Which month\'s subscribers retain best? What\'s the average LTV by pricing tier? Know your best acquisition periods.',
+    desc: "Which month's subscribers retain best? What's the average LTV by pricing tier? Know your best acquisition periods.",
   },
 ]
 
@@ -39,7 +39,7 @@ const tiers = [
     price: '$0',
     period: 'forever',
     description: 'Try it with your first 100 subscribers.',
-    features: ['Up to 100 subscribers', 'Basic health scores', 'Churn flags', '7-day data history'],
+    featureList: ['Up to 100 subscribers', 'Basic health scores', 'Churn flags', '7-day data history'],
     cta: 'Start free',
     highlight: false,
   },
@@ -48,7 +48,7 @@ const tiers = [
     price: '$29',
     period: '/month',
     description: 'For creators serious about subscriber retention.',
-    features: ['Up to 1,000 subscribers', 'Full health scoring', 'Automated win-back DMs', 'Revenue dashboard', 'Content attribution', '90-day history'],
+    featureList: ['Up to 1,000 subscribers', 'Full health scoring', 'Automated win-back DMs', 'Revenue dashboard', 'Content attribution', '90-day history'],
     cta: 'Start Pro trial',
     highlight: true,
   },
@@ -57,7 +57,7 @@ const tiers = [
     price: '$79',
     period: '/month',
     description: 'For high-volume creators and agencies.',
-    features: ['Up to 5,000 subscribers', 'Everything in Pro', 'Cohort analytics', 'API access', 'Priority support', 'Unlimited history'],
+    featureList: ['Up to 5,000 subscribers', 'Everything in Pro', 'Cohort analytics', 'API access', 'Priority support', 'Unlimited history'],
     cta: 'Start Scale trial',
     highlight: false,
   },
@@ -74,10 +74,7 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-4">
           <Link href="#pricing" className="text-sm text-white/60 hover:text-white transition-colors">Pricing</Link>
-          <Link
-            href="/dashboard"
-            className="btn-primary text-sm px-4 py-2"
-          >
+          <Link href="/dashboard" className="btn-primary text-sm px-4 py-2">
             Get started
           </Link>
         </div>
@@ -127,9 +124,9 @@ export default function Home() {
 
       {/* Features */}
       <section id="features" className="max-w-6xl mx-auto px-6 py-24">
-        <h2 className="text-3xl font-bold text-center mb-4">Everything X won't tell you</h2>
+        <h2 className="text-3xl font-bold text-center mb-4">Everything X won&apos;t tell you</h2>
         <p className="text-white/50 text-center mb-16 max-w-xl mx-auto">
-          X's native analytics show you follower counts and impressions. XCreator CRM shows you who's about to cancel and what to do about it.
+          X&apos;s native analytics show you follower counts and impressions. XCreator CRM shows you who&apos;s about to cancel and what to do about it.
         </p>
         <div className="grid md:grid-cols-3 gap-6">
           {features.map((f) => (
@@ -167,7 +164,7 @@ export default function Home() {
               </div>
               <p className="text-white/60 text-sm mb-6">{t.description}</p>
               <ul className="space-y-2 mb-8">
-                {t.features.map((f) => (
+                {t.featureList.map((f) => (
                   <li key={f} className="flex items-start gap-2 text-sm">
                     <span className="text-brand-500 mt-0.5">✓</span>
                     <span className="text-white/70">{f}</span>
@@ -189,11 +186,15 @@ export default function Home() {
         </div>
       </section>
 
+      {/* Footer */}
       <footer className="border-t border-white/10 py-8 text-center text-sm text-white/30">
-  <p className="mb-3">© 2026 XCreator CRM · Built for the creator economy</p>
-  <div className="flex justify-center gap-6">
-    <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
-    <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacy</Link>
-    <Link href="/refund" className="hover:text-white/60 transition-colors">Refund Policy</Link>
-  </div>
-</footer>
+        <p className="mb-3">© 2026 XCreator CRM · Built for the creator economy</p>
+        <div className="flex justify-center gap-6">
+          <Link href="/terms" className="hover:text-white/60 transition-colors">Terms</Link>
+          <Link href="/privacy" className="hover:text-white/60 transition-colors">Privacy</Link>
+          <Link href="/refund" className="hover:text-white/60 transition-colors">Refund Policy</Link>
+        </div>
+      </footer>
+    </main>
+  )
+}
