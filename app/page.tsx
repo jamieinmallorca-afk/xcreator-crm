@@ -122,6 +122,49 @@ export default function Home() {
         </div>
       </section>
 
+      {/* How it works */}
+      <section className="max-w-4xl mx-auto px-6 py-24">
+        <h2 className="text-3xl font-bold text-center mb-4">How it works</h2>
+        <p className="text-white/50 text-center mb-16 max-w-xl mx-auto">
+          Set up once. XCreator CRM runs in the background and alerts you before you lose revenue.
+        </p>
+        <div className="relative">
+          {/* Connector line */}
+          <div className="hidden md:block absolute top-10 left-[16.66%] right-[16.66%] h-px bg-white/10" />
+          <div className="grid md:grid-cols-3 gap-10 text-center relative">
+            {[
+              {
+                step: '01',
+                icon: '🔗',
+                title: 'Connect your X account',
+                desc: 'OAuth in under 2 minutes. We sync your paid subscriber list and start scoring engagement immediately.',
+              },
+              {
+                step: '02',
+                icon: '🔴',
+                title: 'See who\'s at risk',
+                desc: 'Every subscriber gets a daily health score. Anyone going cold gets flagged automatically — you see it on your dashboard before they cancel.',
+              },
+              {
+                step: '03',
+                icon: '💬',
+                title: 'Win them back automatically',
+                desc: 'When a subscriber crosses your threshold, a personalised DM goes out through your own X account — one per subscriber, max once every 30 days, fully within X\'s guidelines.',
+              },
+            ].map((s) => (
+              <div key={s.step} className="flex flex-col items-center">
+                <div className="w-20 h-20 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-3xl mb-5 relative z-10">
+                  {s.icon}
+                </div>
+                <div className="text-xs font-mono text-brand-500 mb-2">{s.step}</div>
+                <h3 className="font-semibold text-lg mb-2">{s.title}</h3>
+                <p className="text-white/50 text-sm leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
       {/* Features */}
       <section id="features" className="max-w-6xl mx-auto px-6 py-24">
         <h2 className="text-3xl font-bold text-center mb-4">Everything X won&apos;t tell you</h2>
