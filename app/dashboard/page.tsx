@@ -51,7 +51,8 @@ export default async function DashboardPage({
             <span className="text-sm text-slate-400">@{profile.x_username}</span>
           )}
           
-            href="/api/auth/logout"
+            <a
+              href="/api/auth/logout"
             className="text-sm text-slate-500 hover:text-white transition-colors"
           >
             Sign out
