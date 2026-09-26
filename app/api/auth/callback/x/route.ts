@@ -70,14 +70,14 @@ export async function GET(request: NextRequest) {
     .from('profiles')
     .upsert(
       {
-        x_user_id: xUser.username,
+        x_username: xUser.username,
         x_user_id: xUser.id,
         x_access_token: tokens.access_token,
         x_refresh_token: tokens.refresh_token ?? null,
         x_token_expires_at: expiresAt,
         updated_at: new Date().toISOString(),
       },
-      { onConflict: 'x_username', ignoreDuplicates: false }
+      { onConflict: 'x_user_id', ignoreDuplicates: false }
     )
     .select('id, onboarding_completed')
     .single()
