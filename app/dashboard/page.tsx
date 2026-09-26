@@ -21,9 +21,6 @@ export default async function DashboardPage({
     .eq('id', session.userId)
     .single()
 
-  // Redirect first-time users to onboarding
-  if (!profile?.onboarding_completed) redirect('/onboarding')
-
   const { data: subscribers } = await db
     .from('subscribers')
     .select('health_score, x_username')
@@ -53,7 +50,7 @@ export default async function DashboardPage({
           {profile?.x_username && (
             <span className="text-sm text-slate-400">@{profile.x_username}</span>
           )}
-          <a
+          
             href="/api/auth/logout"
             className="text-sm text-slate-500 hover:text-white transition-colors"
           >
@@ -63,21 +60,18 @@ export default async function DashboardPage({
       </nav>
 
       <div className="max-w-4xl mx-auto px-6 py-10 space-y-8">
-        {/* Upgrade success banner */}
         {searchParams.upgraded && (
           <div className="bg-emerald-900/30 border border-emerald-500/30 rounded-xl px-5 py-3 text-emerald-300 text-sm">
             🎉 You're now on the Pro plan! All features unlocked.
           </div>
         )}
 
-        {/* Alerts */}
         {atRiskCount > 0 && (
           <div className="bg-amber-900/30 border border-amber-500/30 rounded-xl px-5 py-3 text-amber-300 text-sm">
             ⚠️ {atRiskCount} subscriber{atRiskCount === 1 ? '' : 's'} at risk of churning. Consider sending a win-back DM.
           </div>
         )}
 
-        {/* Stats */}
         <div className="grid grid-cols-3 gap-4">
           {[
             { label: 'Total Subscribers', value: totalSubscribers.toLocaleString(), color: 'text-white' },
@@ -91,7 +85,6 @@ export default async function DashboardPage({
           ))}
         </div>
 
-        {/* Subscriber table */}
         {totalSubscribers > 0 && (
           <div className="bg-slate-900/60 border border-slate-700/50 rounded-2xl overflow-hidden">
             <div className="px-6 py-4 border-b border-slate-800">
@@ -129,7 +122,6 @@ export default async function DashboardPage({
           </div>
         )}
 
-        {/* Win-back DM section */}
         {isPro ? (
           <WinbackSection />
         ) : (
@@ -140,10 +132,8 @@ export default async function DashboardPage({
           </div>
         )}
 
-        {/* Pricing cards (for free users) */}
         {!isPro && <PricingCards currentTier="free" />}
 
-        {/* Connect button */}
         <div className="flex justify-center">
           <ConnectButton />
         </div>
