@@ -63,6 +63,41 @@ const tiers = [
   },
 ]
 
+const faqs = [
+  {
+    q: 'What data does XCreator CRM access from X?',
+    a: 'We connect via X\'s official OAuth and read your paid subscriber list, subscription start dates, subscription status (active, expired, cancelled), and tier information. We do not access your DMs history, your subscribers\' private posts, their follower graphs, or anything beyond what X\'s official API permits for subscription management.',
+  },
+  {
+    q: 'What is the health score based on?',
+    a: 'Subscription consistency, subscription age, renewal history, and whether a subscriber has lapsed and returned. The score is built entirely from subscription behaviour signals — which are the most reliable indicator of who\'s about to cancel.',
+  },
+  {
+    q: 'Will XCreator CRM DM my subscribers?',
+    a: 'Only if you set it up — and only after you review and approve the message template. Win-back DMs are off by default. When enabled, we send at most one per subscriber per 30 days, fully within X\'s platform guidelines. You can pause or disable campaigns at any time.',
+  },
+  {
+    q: 'Are the DMs sent from my X account?',
+    a: 'Yes — win-back DMs are sent through your own connected X account, so they appear to come directly from you. This keeps things personal and avoids any third-party sender issues.',
+  },
+  {
+    q: 'What happens when I hit my subscriber limit on the free plan?',
+    a: 'Your dashboard stays accessible and your existing data is preserved. New health score updates and automated DMs pause until you upgrade. Nothing is deleted — you can pick up exactly where you left off.',
+  },
+  {
+    q: 'Does this work with X Basic, Premium, and Premium+ subscribers?',
+    a: "XCreator CRM works with X's paid subscription feature for creators — the monthly subscription your followers pay to access your exclusive content. It's not tied to the subscriber's own X Premium status.",
+  },
+  {
+    q: 'Is my subscriber data safe?',
+    a: "We store subscriber IDs, subscription status, and renewal history. We use Supabase (SOC 2 compliant) for storage and never sell or share your data with third parties.",
+  },
+  {
+    q: 'Can I delete everything?',
+    a: 'Yes. Settings → Delete Account permanently removes your X connection, all synced subscriber data, and your account. No waiting period, no questions asked.',
+  },
+]
+
 export default function Home() {
   return (
     <main className="min-h-screen bg-[#0a0a0f] text-white">
@@ -223,6 +258,22 @@ export default function Home() {
               >
                 {t.cta}
               </Link>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* FAQ */}
+      <section id="faq" className="max-w-3xl mx-auto px-6 pb-24">
+        <h2 className="text-3xl font-bold text-center mb-4">Common questions</h2>
+        <p className="text-white/50 text-center mb-12">
+          You&apos;re connecting your X account and subscriber list — you deserve straight answers.
+        </p>
+        <div className="space-y-4">
+          {faqs.map((faq) => (
+            <div key={faq.q} className="card">
+              <h3 className="font-semibold mb-3">{faq.q}</h3>
+              <p className="text-white/60 text-sm leading-relaxed">{faq.a}</p>
             </div>
           ))}
         </div>
